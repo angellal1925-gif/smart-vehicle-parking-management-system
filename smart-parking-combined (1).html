@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartPark – Parking Management Dashboard</title>
+  <!-- Icons (Font Awesome) and font (Inter) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+/* ===== Theme colours (change these to restyle the whole app) ===== */
+:root {
+  --bg: #0a1128;
+  --panel: #111c3a;
+  --panel-2: #172652;
+  --line: rgba(120, 150, 255, .15);
+  --blue: #3b82f6;
+  --cyan: #38bdf8;
+  --text: #e8eeff;
+  --muted: #8fa0c8;
+  --green: #22c55e;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --radius: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at 80% -10%, #1a2f6b 0%, var(--bg) 55%) fixed;
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* ===== Sidebar ===== */
+.sidebar {
+  position: fixed; inset: 0 auto 0 0; width: 240px; padding: 22px 16px;
+  background: linear-gradient(180deg, #0d1736, #08102a);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 24px; z-index: 30;
+  transition: transform .3s;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-size: 1.3rem; font-weight: 700; padding: 0 8px; }
+.brand i { color: var(--cyan); font-size: 1.6rem; }
+nav { display: flex; flex-direction: column; gap: 6px; }
+.nav-btn {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: none; border: 0; border-radius: 12px; color: var(--muted);
+  cursor: pointer; text-align: left; transition: background .2s, color .2s;
+}
+.nav-btn i { width: 18px; text-align: center; }
+.nav-btn:hover { background: rgba(59, 130, 246, .12); color: var(--text); }
+.nav-btn.active { background: linear-gradient(90deg, var(--blue), #2563eb); color: #fff; box-shadow: 0 6px 18px rgba(59, 130, 246, .35); }
+.sidebar-foot { margin-top: auto; font-size: .8rem; color: var(--muted); padding: 0 8px; }
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 20; }
+
+/* ===== Main area ===== */
+.main { margin-left: 240px; padding: 24px 28px 40px; }
+.topbar { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+.topbar h1 { font-size: 1.5rem; flex: 1; }
+.menu-btn { display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; width: 40px; height: 40px; cursor: pointer; }
+.top-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.clock { color: var(--muted); font-size: .9rem; }
+.mode-badge { padding: 6px 12px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.mode-badge.demo { background: rgba(245, 158, 11, .15); color: var(--amber); border: 1px solid rgba(245, 158, 11, .4); }
+.mode-badge.live { background: rgba(34, 197, 94, .15); color: var(--green); border: 1px solid rgba(34, 197, 94, .4); }
+
+.page { display: none; }
+.page.active { display: block; animation: fade .35s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ===== Cards ===== */
+.card {
+  background: linear-gradient(145deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 22px;
+  transition: transform .2s, box-shadow .2s;
+}
+.card:hover { box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+.card h3 { margin-bottom: 14px; font-size: 1.05rem; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.card-head h3 { margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 18px; }
+.stat { display: flex; align-items: center; gap: 16px; }
+.stat:hover { transform: translateY(-3px); }
+.stat > i { font-size: 1.5rem; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 14px; }
+.s-blue { background: rgba(59, 130, 246, .18); color: var(--blue); }
+.s-red { background: rgba(239, 68, 68, .18); color: var(--red); }
+.s-green { background: rgba(34, 197, 94, .18); color: var(--green); }
+.s-cyan { background: rgba(56, 189, 248, .18); color: var(--cyan); }
+.stat p { color: var(--muted); font-size: .85rem; }
+.stat h2 { font-size: 1.9rem; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.muted { color: var(--muted); font-size: .9rem; }
+
+.progress { height: 14px; background: rgba(255, 255, 255, .08); border-radius: 99px; overflow: hidden; margin: 8px 0 12px; }
+.bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--cyan)); border-radius: 99px; transition: width .8s ease; }
+.activity { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.activity li { display: flex; align-items: center; gap: 12px; font-size: .9rem; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); }
+.activity .t { margin-left: auto; color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.in { color: var(--green); } .out { color: var(--amber); }
+
+/* ===== Slot grid ===== */
+.legend { display: flex; gap: 16px; font-size: .85rem; color: var(--muted); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.dot.green { background: var(--green); } .dot.red { background: var(--red); }
+.slot-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; }
+.slot {
+  aspect-ratio: 1.15; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; font-size: .78rem; font-weight: 600; border: 1px solid; cursor: pointer; transition: transform .15s;
+}
+.slot:hover { transform: scale(1.08); }
+.slot.free { background: rgba(34, 197, 94, .16); border-color: rgba(34, 197, 94, .5); color: #86efac; }
+.slot.busy { background: rgba(239, 68, 68, .16); border-color: rgba(239, 68, 68, .5); color: #fca5a5; }
+
+/* ===== Forms and buttons ===== */
+label { display: block; margin: 14px 0 6px; font-size: .88rem; color: var(--muted); }
+label small { opacity: .8; }
+input[type=text], input[type=search], input[type=file], select {
+  width: 100%; padding: 11px 14px; background: rgba(8, 16, 42, .7);
+  border: 1px solid var(--line); border-radius: 12px; transition: border-color .2s;
+}
+input:focus, select:focus { border-color: var(--blue); outline: none; }
+select option { background: var(--panel); }
+.note { margin: 14px 0; padding: 10px 12px; border-radius: 10px; font-size: .82rem; color: var(--amber); background: rgba(245, 158, 11, .1); }
+.note:empty { display: none; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border: 0; border-radius: 12px;
+  background: linear-gradient(90deg, var(--blue), #2563eb); color: #fff; font-weight: 600; cursor: pointer;
+  transition: transform .15s, box-shadow .2s;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59, 130, 246, .4); }
+.btn.green { background: linear-gradient(90deg, #16a34a, var(--green)); }
+.search-row { display: flex; gap: 12px; margin-bottom: 18px; }
+.search-row input { flex: 1; }
+.card-head input[type=search] { width: 260px; max-width: 100%; }
+
+/* ===== Result panels (entry / exit) ===== */
+.empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+.empty i { font-size: 2.2rem; margin-bottom: 12px; color: var(--blue); }
+.plate {
+  display: inline-block; padding: 8px 18px; margin: 4px 0 14px; border-radius: 8px; font-size: 1.4rem; font-weight: 700; letter-spacing: 2px;
+  background: #f4f6fb; color: #0a1128; border: 3px solid #0a1128; outline: 2px solid #f4f6fb;
+}
+.details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+.details div { background: rgba(255, 255, 255, .04); padding: 12px; border-radius: 12px; }
+.details span { display: block; color: var(--muted); font-size: .78rem; margin-bottom: 4px; }
+.details b { font-size: 1rem; }
+.fee { grid-column: 1 / -1; background: rgba(59, 130, 246, .15) !important; }
+.fee b { font-size: 1.8rem; color: var(--cyan); }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(255, 255, 255, .4); vertical-align: -1px; }
+
+/* ===== Table ===== */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 640px; }
+th, td { text-align: left; padding: 12px 14px; font-size: .9rem; }
+th { color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); }
+tbody tr { border-bottom: 1px solid rgba(255, 255, 255, .04); transition: background .15s; }
+tbody tr:hover { background: rgba(59, 130, 246, .08); }
+.tag { padding: 3px 10px; border-radius: 99px; font-size: .75rem; background: rgba(34, 197, 94, .15); color: var(--green); }
+
+/* ===== Toast message ===== */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; max-width: 340px; padding: 14px 18px; border-radius: 12px; z-index: 50;
+  background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  transform: translateY(30px); opacity: 0; pointer-events: none; transition: .3s;
+}
+.toast.show { transform: none; opacity: 1; }
+.toast.error { border-color: var(--red); }
+.toast.ok { border-color: var(--green); }
+
+/* ===== Responsive: tablet and phone ===== */
+@media (max-width: 1100px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: none; }
+  .sidebar.open + .overlay { display: block; }
+  .main { margin-left: 0; padding: 18px 16px 32px; }
+  .menu-btn { display: block; }
+  .two-col { grid-template-columns: 1fr; }
+  .slot-grid { grid-template-columns: repeat(5, 1fr); }
+  .clock { display: none; }
+}
+@media (max-width: 520px) {
+  .stats { grid-template-columns: 1fr; }
+  .search-row { flex-direction: column; }
+  .details { grid-template-columns: 1fr; }
+  .topbar h1 { font-size: 1.2rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+</style>
+</head>
+<body>
+
+  <!-- ===== Sidebar navigation ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><i class="fa-solid fa-square-parking"></i><span>SmartPark</span></div>
+    <nav>
+      <button class="nav-btn active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i>Dashboard</button>
+      <button class="nav-btn" data-page="slots"><i class="fa-solid fa-table-cells"></i>Parking Slots</button>
+      <button class="nav-btn" data-page="entry"><i class="fa-solid fa-right-to-bracket"></i>Vehicle Entry</button>
+      <button class="nav-btn" data-page="exit"><i class="fa-solid fa-right-from-bracket"></i>Vehicle Exit</button>
+      <button class="nav-btn" data-page="records"><i class="fa-solid fa-clipboard-list"></i>Vehicle Records</button>
+    </nav>
+    <div class="sidebar-foot"><i class="fa-solid fa-graduation-cap"></i> College project demo</div>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+
+  <main class="main">
+    <!-- ===== Top bar ===== -->
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="top-right">
+        <span class="mode-badge" id="modeBadge"></span>
+        <span class="clock" id="clock"></span>
+      </div>
+    </header>
+
+    <!-- ===== 1. Dashboard ===== -->
+    <section class="page active" id="page-dashboard">
+      <div class="stats">
+        <div class="card stat"><i class="fa-solid fa-square-parking s-blue"></i><div><p>Total slots</p><h2 id="statTotal">0</h2></div></div>
+        <div class="card stat"><i class="fa-solid fa-car-side s-red"></i><div><p>Occupied</p><h2 id="statOccupied">0</h2></div></div>
+        <div class="card stat"><i class="fa-solid fa-circle-check s-green"></i><div><p>Available</p><h2 id="statAvailable">0</h2></div></div>
+        <div class="card stat"><i class="fa-solid fa-car-on s-cyan"></i><div><p>Total vehicles (all records)</p><h2 id="statVehicles">0</h2></div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <h3>Lot occupancy</h3>
+          <div class="progress"><div class="bar" id="occBar"></div></div>
+          <p class="muted" id="occText"></p>
+        </div>
+        <div class="card">
+          <h3>Recent activity</h3>
+          <ul class="activity" id="activityList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 2. Parking slots ===== -->
+    <section class="page" id="page-slots">
+      <div class="card">
+        <div class="card-head">
+          <h3>Slot map (100 spaces)</h3>
+          <div class="legend"><span><i class="dot green"></i>Available</span><span><i class="dot red"></i>Occupied</span></div>
+        </div>
+        <div class="slot-grid" id="slotGrid"></div>
+      </div>
+    </section>
+
+    <!-- ===== 3. Vehicle entry ===== -->
+    <section class="page" id="page-entry">
+      <div class="two-col">
+        <form class="card" id="entryForm">
+          <h3>Register incoming vehicle</h3>
+          <label>Vehicle image <small>(sent to the backend for plate and colour detection)</small></label>
+          <input type="file" id="entryImage" accept="image/*">
+          <label>License plate</label>
+          <input type="text" id="entryPlate" placeholder="e.g. MP07 AB 1234" maxlength="14">
+          <label>Vehicle colour</label>
+          <select id="entryColor"></select>
+          <p class="note" id="entryNote"></p>
+          <button class="btn" type="submit"><i class="fa-solid fa-right-to-bracket"></i> Register entry</button>
+        </form>
+        <div class="card" id="entryResult"></div>
+      </div>
+    </section>
+
+    <!-- ===== 4. Vehicle exit ===== -->
+    <section class="page" id="page-exit">
+      <form class="card search-row" id="exitForm">
+        <input type="text" id="exitPlate" placeholder="Enter license plate of the exiting vehicle" maxlength="14">
+        <button class="btn" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Find vehicle</button>
+      </form>
+      <div class="card" id="exitResult"></div>
+    </section>
+
+    <!-- ===== 5. Vehicle records ===== -->
+    <section class="page" id="page-records">
+      <div class="card">
+        <div class="card-head">
+          <h3>Vehicle records</h3>
+          <input type="search" id="recordSearch" placeholder="Search plate, colour or status">
+        </div>
+        <p class="note" id="recordNote"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Vehicle number</th><th>Colour</th><th>Slot</th><th>Entry time</th><th>Exit time</th><th>Fee</th></tr></thead>
+            <tbody id="recordBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script>
+/* =====================================================================
+   SmartPark frontend logic
+   ---------------------------------------------------------------------
+   DEMO MODE (default): all data is generated in the browser. Nothing is
+   recognised or stored. Set CONFIG.useBackend = true once the Flask /
+   FastAPI backend is running to use real data.
+
+   Backend endpoints this file expects (adjust to match your API):
+     GET  /api/vehicles -> [{plate, color, slot, entry_time, exit_time, fee}]
+     POST /api/entry    -> multipart form with "image"; returns one vehicle
+                           record (plate and colour come from OpenCV/OCR)
+     POST /api/exit     -> JSON {plate}; returns the vehicle record with
+                           exit_time and fee calculated by the backend
+   Times should be ISO strings, e.g. "2026-10-29T14:30:00".
+   ===================================================================== */
+
+/* ---------- 1. Settings ---------- */
+const CONFIG = {
+  useBackend: false,                    // false = demo data, true = real backend
+  apiBase: 'http://127.0.0.1:5000/api', // your Flask/FastAPI address
+  totalSlots: 100,
+  firstHourFee: 20,                     // demo fee rules (Rs.) - backend does this when live
+  extraHourFee: 10
+};
+
+const COLORS = { White: '#f5f5f5', Black: '#111', Silver: '#c0c4cc', Grey: '#7b8190', Red: '#e53935', Blue: '#1e6fe0' };
+
+let vehicles = [];     // every record: {plate, color, slot, entry, exit, fee}
+let pendingExit = null; // vehicle found on the Exit page, waiting for confirmation
+
+/* ---------- 2. Small helpers ---------- */
+const $ = s => document.querySelector(s);
+// Escape text before putting it in HTML (prevents HTML injection)
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const normalise = p => p.toUpperCase().replace(/[^A-Z0-9]/g, '');
+const fmtTime = d => d ? d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtFee = f => f == null ? '—' : '₹' + f;
+const swatch = c => `<i class="swatch" style="background:${COLORS[c] || '#888'}"></i>${esc(c)}`;
+
+function duration(entry, exit) {
+  const mins = Math.max(1, Math.round((exit - entry) / 60000));
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+// Demo fee: first hour flat, then per extra hour (part hours round up)
+function calcFee(entry, exit) {
+  const hours = Math.max(1, Math.ceil((exit - entry) / 3600000));
+  return CONFIG.firstHourFee + (hours - 1) * CONFIG.extraHourFee;
+}
+let toastTimer;
+function toast(msg, type = '') {
+  const t = $('#toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ---------- 3. Data layer (the only place that talks to the backend) ---------- */
+async function apiRequest(path, options) {
+  const res = await fetch(CONFIG.apiBase + path, options);
+  if (!res.ok) throw new Error('Server returned ' + res.status);
+  return res.json();
+}
+// Convert a backend record into the shape used by this file
+const fromApi = r => ({ plate: r.plate, color: r.color, slot: r.slot, entry: new Date(r.entry_time), exit: r.exit_time ? new Date(r.exit_time) : null, fee: r.fee ?? null });
+
+async function loadVehicles() {
+  if (CONFIG.useBackend) {
+    try { vehicles = (await apiRequest('/vehicles')).map(fromApi); }
+    catch (e) { vehicles = []; toast('Cannot reach backend: ' + e.message, 'error'); }
+  } else {
+    vehicles = makeSampleData();
+  }
+}
+
+// Fake but realistic sample data (same every reload). DEMO ONLY.
+function makeSampleData() {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pick = arr => arr[Math.floor(rnd() * arr.length)];
+  const letters = 'ABCDEFGHJKLMNPRSTUVWXYZ', colors = Object.keys(COLORS);
+  const used = new Set(), list = [], now = Date.now();
+  const newPlate = () => {
+    let p;
+    do { p = `${pick(['MP07', 'MP07', 'MP07', 'MP09', 'MP04', 'UP78'])} ${pick(letters)}${pick(letters)} ${1000 + Math.floor(rnd() * 9000)}`; } while (used.has(p));
+    used.add(p); return p;
+  };
+  const slots = Array.from({ length: CONFIG.totalSlots }, (_, i) => i + 1).sort(() => rnd() - .5);
+  // 62 vehicles currently parked
+  for (let i = 0; i < 62; i++) {
+    list.push({ plate: newPlate(), color: pick(colors), slot: slots[i], entry: new Date(now - (10 + rnd() * 400) * 60000), exit: null, fee: null });
+  }
+  // 14 vehicles that already left
+  for (let i = 0; i < 14; i++) {
+    const exit = new Date(now - (20 + rnd() * 900) * 60000);
+    const entry = new Date(exit - (30 + rnd() * 300) * 60000);
+    list.push({ plate: newPlate(), color: pick(colors), slot: null, entry, exit, fee: calcFee(entry, exit) });
+  }
+  return list;
+}
+
+/* ---------- 4. Rendering ---------- */
+const parked = () => vehicles.filter(v => !v.exit);
+
+function renderAll() { renderDashboard(); renderSlots(); renderRecords(); }
+
+function renderDashboard() {
+  const occ = parked().length, total = CONFIG.totalSlots, pct = Math.round(occ / total * 100);
+  $('#statTotal').textContent = total;
+  $('#statOccupied').textContent = occ;
+  $('#statAvailable').textContent = total - occ;
+  $('#statVehicles').textContent = vehicles.length;
+  $('#occBar').style.width = pct + '%';
+  $('#occText').textContent = `${pct}% full – ${total - occ} of ${total} slots free`;
+
+  // Recent activity: latest 6 entry/exit events
+  const events = [];
+  vehicles.forEach(v => {
+    events.push({ t: v.entry, plate: v.plate, kind: 'in' });
+    if (v.exit) events.push({ t: v.exit, plate: v.plate, kind: 'out' });
+  });
+  events.sort((a, b) => b.t - a.t);
+  $('#activityList').innerHTML = events.slice(0, 6).map(e => `
+    <li><i class="fa-solid ${e.kind === 'in' ? 'fa-arrow-right-to-bracket in' : 'fa-arrow-right-from-bracket out'}"></i>
+    <span>${esc(e.plate)} ${e.kind === 'in' ? 'entered' : 'exited'}</span><span class="t">${fmtTime(e.t)}</span></li>`).join('') || '<li>No activity yet</li>';
+}
+
+function renderSlots() {
+  const bySlot = {};
+  parked().forEach(v => bySlot[v.slot] = v);
+  let html = '';
+  for (let n = 1; n <= CONFIG.totalSlots; n++) {
+    const v = bySlot[n];
+    html += `<div class="slot ${v ? 'busy' : 'free'}" data-slot="${n}" title="${v ? esc(v.plate) : 'Available'}">
+      <i class="fa-solid ${v ? 'fa-car-side' : 'fa-square-parking'}"></i>P${String(n).padStart(2, '0')}</div>`;
+  }
+  $('#slotGrid').innerHTML = html;
+}
+
+function renderRecords() {
+  const q = $('#recordSearch').value.trim().toLowerCase();
+  const rows = vehicles.filter(v => {
+    const status = v.exit ? 'exited' : 'parked';
+    return !q || [v.plate, v.color, status].some(x => x.toLowerCase().includes(q));
+  }).sort((a, b) => b.entry - a.entry);
+  $('#recordBody').innerHTML = rows.map(v => `
+    <tr><td><b>${esc(v.plate)}</b></td><td>${swatch(v.color)}</td>
+    <td>${v.slot ? 'P' + String(v.slot).padStart(2, '0') : '—'}</td><td>${fmtTime(v.entry)}</td>
+    <td>${v.exit ? fmtTime(v.exit) : '<span class="tag">Parked</span>'}</td><td>${fmtFee(v.fee)}</td></tr>`).join('')
+    || '<tr><td colspan="6" class="empty">No records match your search.</td></tr>';
+}
+
+/* ---------- 5. Vehicle entry ---------- */
+function showEntryPlaceholder() {
+  $('#entryResult').innerHTML = `<div class="empty"><i class="fa-solid fa-camera"></i>
+    <p>Detected plate and colour will appear here after you register a vehicle.</p></div>`;
+}
+function showEntryResult(v, source) {
+  $('#entryResult').innerHTML = `<h3>Entry registered</h3>
+    <div class="plate">${esc(v.plate)}</div>
+    <div class="details">
+      <div><span>Vehicle colour</span><b>${swatch(v.color)}</b></div>
+      <div><span>Assigned slot</span><b>P${String(v.slot).padStart(2, '0')}</b></div>
+      <div><span>Entry time</span><b>${fmtTime(v.entry)}</b></div>
+      <div><span>Source</span><b>${esc(source)}</b></div>
+    </div>`;
+}
+
+async function registerEntry(e) {
+  e.preventDefault();
+  try {
+    if (CONFIG.useBackend) {
+      // Backend detects plate + colour from the uploaded image
+      const file = $('#entryImage').files[0];
+      if (!file) return toast('Please choose a vehicle image first.', 'error');
+      const fd = new FormData(); fd.append('image', file);
+      const rec = fromApi(await apiRequest('/entry', { method: 'POST', body: fd }));
+      await loadVehicles(); renderAll();
+      showEntryResult(rec, 'Detected by backend');
+    } else {
+      // Demo: plate and colour are typed by hand - NO recognition happens
+      const plate = $('#entryPlate').value.trim().toUpperCase();
+      if (!plate) return toast('Enter a license plate number.', 'error');
+      if (parked().some(v => normalise(v.plate) === normalise(plate))) return toast('This vehicle is already parked.', 'error');
+      if (parked().length >= CONFIG.totalSlots) return toast('Parking lot is full.', 'error');
+      const taken = new Set(parked().map(v => v.slot));
+      let slot = 1; while (taken.has(slot)) slot++;
+      const rec = { plate, color: $('#entryColor').value, slot, entry: new Date(), exit: null, fee: null };
+      vehicles.push(rec); renderAll();
+      showEntryResult(rec, 'Typed manually (demo)');
+    }
+    $('#entryForm').reset();
+    toast('Vehicle entry registered.', 'ok');
+  } catch (err) { toast('Entry failed: ' + err.message, 'error'); }
+}
+
+/* ---------- 6. Vehicle exit ---------- */
+function showExitPlaceholder(msg) {
+  $('#exitResult').innerHTML = `<div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>${msg}</p></div>`;
+}
+function showExitDetails() {
+  const { v, exit } = pendingExit;
+  $('#exitResult').innerHTML = `<h3>Exit summary</h3>
+    <div class="plate">${esc(v.plate)}</div>
+    <div class="details">
+      <div><span>Vehicle colour</span><b>${swatch(v.color)}</b></div>
+      <div><span>Slot</span><b>P${String(v.slot).padStart(2, '0')}</b></div>
+      <div><span>Entry time</span><b>${fmtTime(v.entry)}</b></div>
+      <div><span>Exit time</span><b>${fmtTime(exit)}</b></div>
+      <div><span>Parking duration</span><b>${duration(v.entry, exit)}</b></div>
+      <div class="fee"><span>Parking fee ${CONFIG.useBackend ? '(estimate – final fee comes from backend)' : '(demo calculation)'}</span><b>${fmtFee(calcFee(v.entry, exit))}</b></div>
+    </div>
+    <button class="btn green" id="confirmExit"><i class="fa-solid fa-check"></i> Confirm exit</button>`;
+  $('#confirmExit').onclick = confirmExit;
+}
+
+function findVehicle(e) {
+  e.preventDefault();
+  const q = normalise($('#exitPlate').value);
+  const v = parked().find(x => normalise(x.plate) === q);
+  if (!q || !v) { pendingExit = null; return showExitPlaceholder('No parked vehicle found with that plate number.'); }
+  pendingExit = { v, exit: new Date() };
+  showExitDetails();
+}
+
+async function confirmExit() {
+  const { v, exit } = pendingExit;
+  try {
+    if (CONFIG.useBackend) {
+      await apiRequest('/exit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plate: v.plate }) });
+      await loadVehicles();
+    } else { v.exit = exit; v.fee = calcFee(v.entry, exit); }
+    renderAll();
+    showExitPlaceholder(`${esc(v.plate)} has exited. Slot P${String(v.slot).padStart(2, '0')} is now available.`);
+    pendingExit = null; $('#exitForm').reset();
+    toast('Vehicle exit completed.', 'ok');
+  } catch (err) { toast('Exit failed: ' + err.message, 'error'); }
+}
+
+/* ---------- 7. Navigation, clock and start-up ---------- */
+const titles = { dashboard: 'Dashboard', slots: 'Parking Slots', entry: 'Vehicle Entry', exit: 'Vehicle Exit', records: 'Vehicle Records' };
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+  $('#pageTitle').textContent = titles[name];
+  closeMenu();
+}
+const closeMenu = () => $('#sidebar').classList.remove('open');
+
+function tickClock() { $('#clock').textContent = new Date().toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+
+async function init() {
+  // Clear banner showing whether the data is demo or from the backend
+  const badge = $('#modeBadge');
+  badge.className = 'mode-badge ' + (CONFIG.useBackend ? 'live' : 'demo');
+  badge.innerHTML = CONFIG.useBackend ? '<i class="fa-solid fa-plug"></i> Backend connected' : '<i class="fa-solid fa-flask"></i> Demo data – backend not connected';
+  const demoNote = 'Demo mode: plate and colour are typed manually. No image recognition is performed.';
+  $('#entryNote').textContent = CONFIG.useBackend ? '' : demoNote;
+  $('#recordNote').textContent = CONFIG.useBackend ? '' : 'These records are generated sample data, not real parking records.';
+  $('#entryColor').innerHTML = Object.keys(COLORS).map(c => `<option>${c}</option>`).join('');
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => showPage(b.dataset.page));
+  $('#menuBtn').onclick = () => $('#sidebar').classList.add('open');
+  $('#overlay').onclick = closeMenu;
+  $('#entryForm').onsubmit = registerEntry;
+  $('#exitForm').onsubmit = findVehicle;
+  $('#recordSearch').oninput = renderRecords;
+  $('#slotGrid').onclick = e => {
+    const s = e.target.closest('.slot'); if (!s) return;
+    const v = parked().find(x => x.slot === +s.dataset.slot);
+    toast(v ? `Slot ${s.dataset.slot}: ${v.plate} (${v.color}), since ${fmtTime(v.entry)}` : `Slot ${s.dataset.slot} is available`);
+  };
+
+  showEntryPlaceholder();
+  showExitPlaceholder('Search for a parked vehicle to see its duration and fee.');
+  tickClock(); setInterval(tickClock, 30000);
+  await loadVehicles();
+  renderAll();
+}
+init();
+
+</script>
+</body>
+</html>
